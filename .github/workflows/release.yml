@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build app
+        run: ./build.sh
+
+      - name: Package app
+        id: package
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            release_tag="${INPUT_TAG}"
+          else
+            release_tag="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "${release_tag}" =~ ^v[0-9] ]]; then
+            echo "Release tag must start with v followed by a number: ${release_tag}"
+            exit 1
+          fi
+
+          mkdir -p dist
+          archive="dist/StatusBar-${release_tag}.zip"
+          ditto -c -k --sequesterRsrc --keepParent build/StatusBar.app "${archive}"
+          (cd dist && shasum -a 256 "$(basename "${archive}")" > SHA256SUMS)
+          echo "release_tag=${release_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.package.outputs.release_tag }}
+        run: |
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${RELEASE_TAG}" dist/* --clobber
+          else
+            gh release create "${RELEASE_TAG}" dist/* \
+              --title "Status Bar ${RELEASE_TAG}" \
+              --generate-notes
+          fi
