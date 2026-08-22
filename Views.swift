@@ -20,17 +20,23 @@ struct MainView: View {
     @State private var detailID: String?
 
     var body: some View {
-        ZStack {
-            BackgroundView()
-            if showingSettings {
-                SettingsView(store: store) { showingSettings = false }
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else if let detailID {
-                DetailView(store: store, providerID: detailID) { self.detailID = nil }
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+        Group {
+            if store.isPanelVisible {
+                ZStack {
+                    BackgroundView()
+                    if showingSettings {
+                        SettingsView(store: store) { showingSettings = false }
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    } else if let detailID {
+                        DetailView(store: store, providerID: detailID) { self.detailID = nil }
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    } else {
+                        DashboardView(store: store, openSettings: { withAnimation(.easeInOut(duration: 0.22)) { showingSettings = true } }, openDetails: { id in withAnimation(.easeInOut(duration: 0.22)) { detailID = id } }, onQuit: onQuit)
+                            .transition(.move(edge: .leading).combined(with: .opacity))
+                    }
+                }
             } else {
-                DashboardView(store: store, openSettings: { withAnimation(.easeInOut(duration: 0.22)) { showingSettings = true } }, openDetails: { id in withAnimation(.easeInOut(duration: 0.22)) { detailID = id } }, onQuit: onQuit)
-                    .transition(.move(edge: .leading).combined(with: .opacity))
+                Color.clear
             }
         }
         .frame(width: 480, height: 680)
@@ -118,7 +124,7 @@ struct DashboardView: View {
                     Text(snapshot?.subtitle ?? L10n.text(.waiting, language)).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
                 Spacer()
-                StatusOrb(state: snapshot?.state ?? .loading, color: snapshot?.accent.color ?? .secondary)
+                StatusOrb(state: snapshot?.state ?? .loading, color: snapshot?.accent.color ?? .secondary, isAnimating: store.isPanelVisible)
             }
 
             if let snapshot {
@@ -244,15 +250,25 @@ struct ProgressBar: View {
 struct StatusOrb: View {
     let state: MetricState
     let color: Color
+    let isAnimating: Bool
     @State private var pulsing = false
 
     var body: some View {
         ZStack {
-            Circle().fill(color.opacity(pulsing ? 0.12 : 0.22)).frame(width: 60, height: 60).scaleEffect(pulsing ? 1.18 : 0.92)
+            Circle().fill(color.opacity(pulsing ? 0.12 : 0.22)).frame(width: 60, height: 60).scaleEffect(pulsing ? 1.0 : 0.92)
             Circle().fill(color.opacity(0.18)).frame(width: 42, height: 42)
             Image(systemName: state == .ready ? "checkmark" : "ellipsis").font(.system(size: 16, weight: .bold)).foregroundStyle(color)
         }
-        .onAppear { withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) { pulsing = true } }
+        .onAppear { updateAnimation(isAnimating) }
+        .onChange(of: isAnimating) { active in updateAnimation(active) }
+    }
+
+    private func updateAnimation(_ active: Bool) {
+        if active {
+            withAnimation(.easeOut(duration: 0.35)) { pulsing = true }
+        } else {
+            withAnimation(nil) { pulsing = false }
+        }
     }
 }
 
@@ -280,7 +296,7 @@ struct DetailView: View {
                 }
                 Spacer()
                 if let snapshot {
-                    StatusOrb(state: snapshot.state, color: snapshot.accent.color)
+                    StatusOrb(state: snapshot.state, color: snapshot.accent.color, isAnimating: store.isPanelVisible)
                         .scaleEffect(0.58)
                         .frame(width: 42, height: 42)
                 }

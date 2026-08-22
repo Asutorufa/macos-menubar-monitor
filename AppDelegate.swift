@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupPanel()
         observeStore()
         restartTimers()
-        store.refreshAll()
+        store.refreshVisibleProviders()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -99,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         refreshTimers.removeAll()
         cycleTimer?.invalidate()
         cycleTimer = nil
-        for providerID in store.providerIDs {
+        for providerID in store.activeProviderIDs {
             let timer = Timer.scheduledTimer(withTimeInterval: store.refreshInterval(for: providerID), repeats: true) { [weak self] _ in
                 Task { @MainActor [weak self] in self?.store.refresh(providerID) }
             }
@@ -158,6 +158,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
+        store.setPanelVisible(true)
+        restartTimers()
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.18
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -174,6 +176,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func hidePanel() {
         stopEventMonitors()
+        store.setPanelVisible(false)
+        restartTimers()
         guard let panel, panel.isVisible else { return }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.12

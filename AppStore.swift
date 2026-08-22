@@ -27,13 +27,21 @@ final class AppStore: ObservableObject {
     @Published private(set) var cycleMetricID: String? = nil
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastRefresh: Date?
+    @Published private(set) var isPanelVisible = false
 
     var providerIDs: [String] { registry.ids }
     var statusMetricIDs: [String] { registry.ids + [StatusMetricID.cycle.rawValue] }
+    var activeProviderIDs: [String] {
+        if isPanelVisible || selectedMetric == .cycle {
+            return registry.ids
+        }
+        return registry.ids.contains(selectedMetric.rawValue) ? [selectedMetric.rawValue] : []
+    }
 
     private let settingsStore: SettingsStore
     private let registry: MetricProviderRegistry
     private var refreshTasks: [String: Task<Void, Never>] = [:]
+    private var refreshTokens: [String: UUID] = [:]
 
     init(settingsStore: SettingsStore = SettingsStore(), registry: MetricProviderRegistry? = nil) {
         self.settingsStore = settingsStore
@@ -82,33 +90,55 @@ final class AppStore: ObservableObject {
         if normalized.selectedMetric != .cycle { cycleMetricID = nil }
         settingsStore.save(normalized)
         registry.update(settings: normalized)
-        refreshAll()
+        refreshVisibleProviders()
     }
 
     func refreshAll() {
-        registry.ids.forEach(refresh)
+        refreshVisibleProviders()
+    }
+
+    func setPanelVisible(_ visible: Bool) {
+        guard isPanelVisible != visible else { return }
+        isPanelVisible = visible
+        refreshVisibleProviders()
+    }
+
+    func refreshVisibleProviders() {
+        cancelInactiveRefreshes()
+        activeProviderIDs.forEach(refresh)
     }
 
     func refresh(_ providerID: String) {
         guard refreshTasks[providerID] == nil,
+              activeProviderIDs.contains(providerID),
               let provider = registry.providers.first(where: { $0.id == providerID }) else { return }
 
         isRefreshing = true
         let language = settings.language
+        let refreshToken = UUID()
+        refreshTokens[providerID] = refreshToken
         refreshTasks[providerID] = Task { [weak self] in
+            defer {
+                if let self, self.refreshTokens[providerID] == refreshToken {
+                    self.refreshTasks[providerID] = nil
+                    self.refreshTokens[providerID] = nil
+                    self.isRefreshing = !self.refreshTasks.isEmpty
+                }
+            }
+
             let snapshot: MetricSnapshot
             do {
                 snapshot = try await provider.load(language: language)
             } catch {
+                guard !Task.isCancelled else { return }
                 snapshot = Self.failureSnapshot(for: provider.id, error: error, language: language)
             }
 
             guard !Task.isCancelled else { return }
+            guard self?.refreshTokens[providerID] == refreshToken else { return }
             self?.snapshots[provider.id] = snapshot
             self?.reconcileCycle()
             self?.lastRefresh = Date()
-            self?.refreshTasks[provider.id] = nil
-            self?.isRefreshing = !(self?.refreshTasks.isEmpty ?? true)
         }
     }
 
@@ -137,6 +167,17 @@ final class AppStore: ObservableObject {
         if !availableMetricIDs.contains(cycleMetricID ?? "") {
             cycleMetricID = availableMetricIDs.first
         }
+    }
+
+    private func cancelInactiveRefreshes() {
+        let activeIDs = Set(activeProviderIDs)
+        let inactiveIDs = refreshTasks.keys.filter { !activeIDs.contains($0) }
+        for providerID in inactiveIDs {
+            refreshTasks[providerID]?.cancel()
+            refreshTasks[providerID] = nil
+            refreshTokens[providerID] = nil
+        }
+        isRefreshing = !refreshTasks.isEmpty
     }
 
     nonisolated private static func failureSnapshot(for id: String, error: Error, language: AppLanguage) -> MetricSnapshot {

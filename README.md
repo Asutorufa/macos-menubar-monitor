@@ -43,6 +43,12 @@ Codex, Lightsail and Yuhaiin each have an independent refresh timer. The
 default intervals are 300 seconds, 600 seconds and 5 seconds respectively;
 the values can be changed separately in Settings.
 
+Refresh work is visibility-aware: while the panel is closed, only the provider
+currently shown in the menu bar is refreshed. Opening the panel temporarily
+refreshes all providers for the dashboard, and cycle mode keeps all providers
+active because each one can be shown in the menu bar. Providers that are no
+longer needed have their in-flight tasks cancelled.
+
 Lightsail also queries AWS Cost Explorer for the current month's billed
 Lightsail transfer. The menu bar and primary remaining value always use the
 near-real-time instance metrics; billing is shown separately as a delayed
