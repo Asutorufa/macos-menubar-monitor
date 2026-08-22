@@ -1,72 +1,199 @@
 # Status Bar
 
-Unified macOS menu bar monitor for Codex quota, AWS Lightsail traffic and
-Yuhaiin live traffic.
+Status Bar is a lightweight macOS menu bar monitor for three kinds of data:
 
-## Build
+- Codex quota and rate-limit windows
+- AWS Lightsail transfer usage and billing context
+- Yuhaiin live upload/download traffic
+
+It runs as a menu bar accessory, so there is no Dock icon or background server
+to manage. Choose one metric for the menu bar, or let the app rotate through
+all providers that currently have data.
+
+<p align="center">
+  <img src="image.png" width="420" alt="Status Bar dashboard preview">
+</p>
+
+## Requirements
+
+- macOS 13 Ventura or later
+- A Mac with the Swift compiler available (`swiftc`); Xcode Command Line Tools
+  are sufficient for local builds
+- Optional: Codex CLI authentication, AWS credentials, and/or a running
+  Yuhaiin management API, depending on which cards you want to use
+
+## Install
+
+### Download a release
+
+Published builds are available from the
+[GitHub Releases](https://github.com/Asutorufa/macos-menubar-monitor/releases)
+page. Unzip `StatusBar-<version>.zip`, move `StatusBar.app` to Applications,
+then open it.
+
+The app is currently ad-hoc signed. macOS may ask you to confirm the first
+launch in System Settings → Privacy & Security.
+
+### Build from source
 
 ```sh
-cd /Users/asutorufa/Documents/Programming/status_bar
+git clone https://github.com/Asutorufa/macos-menubar-monitor.git
+cd macos-menubar-monitor
 ./build.sh
 open build/StatusBar.app
 ```
 
-## Release
+`build.sh` compiles the Swift sources, copies the app resources, validates the
+property list, and creates an ad-hoc signed `build/StatusBar.app` bundle.
 
-Push a version tag to build a macOS app and upload it to the GitHub Release
-Assets automatically:
+## First-time setup
+
+1. Launch Status Bar. Its current metric appears in the macOS menu bar.
+2. Click the menu bar item and open Settings using the sliders button.
+3. Choose the metric or `Rotate metrics` that should be displayed in the menu
+   bar.
+4. Configure the providers you use, then choose **Save & refresh**.
+5. Click any dashboard card to open its detailed view. Use the refresh button
+   in the lower-right corner to fetch all visible providers immediately.
+
+The dashboard refreshes every provider while it is open. When it is closed,
+only the metric shown in the menu bar is refreshed, which reduces unnecessary
+requests. Rotation keeps all providers active.
+
+## Configure providers
+
+### Codex
+
+Codex is ready automatically when the app can read a valid Codex CLI auth file
+at `~/.codex/auth.json`. The file must contain an access token and account ID.
+
+For another launch environment, provide both variables instead:
+
+```sh
+CODEX_TOKEN="..." CODEX_ACCOUNT="..." open build/StatusBar.app
+```
+
+The Codex card shows the primary and secondary rate-limit windows, remaining
+percentage, reset time, credits, and account information. The app reads the
+usage endpoint directly from `chatgpt.com`; it does not ask you to paste the
+token into Settings.
+
+### AWS Lightsail
+
+Open Settings → AWS Lightsail. You can provide credentials in any one of these
+ways, in this order:
+
+1. Access Key ID and Secret Access Key in Settings
+2. `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+3. The selected profile in `~/.aws/credentials`
+
+An optional session token is supported through Settings or `AWS_SESSION_TOKEN`.
+The profile selected by `AWS_PROFILE` takes precedence over the profile field
+in Settings.
+
+Region resolution follows this order:
+
+1. Region in Settings
+2. `AWS_REGION`
+3. `AWS_DEFAULT_REGION`
+4. The selected profile's region in `~/.aws/config`
+5. `ap-northeast-1`
+
+The AWS card reads instance metadata and `NetworkIn`/`NetworkOut` metrics from
+Lightsail. It also displays a separate Cost Explorer view for the current
+month. Live instance usage is the primary value; billing data is only a
+reference because AWS billing can lag and is cached for up to 24 hours.
+
+The IAM identity needs permission to read Lightsail instances, bundles, and
+instance metrics. Cost Explorer permission is additionally required for the
+billing section. AWS SSO and `credential_process` profiles are not supported by
+the direct client yet.
+
+### Yuhaiin
+
+The default management endpoint is:
+
+```text
+http://127.0.0.1:50051
+```
+
+If your Yuhaiin endpoint is different, enter it in Settings. If authentication
+is enabled, enter the Basic token; the app adds the `Basic ` prefix when it is
+missing. The card uses the management API's total connection counters to show
+current download/upload rates and cumulative totals.
+
+## Settings and refresh rates
+
+Each provider has its own refresh interval. Defaults and accepted ranges are:
+
+| Provider | Default | Allowed range |
+| --- | ---: | ---: |
+| Codex | 300 seconds | 30 seconds–24 hours |
+| AWS Lightsail | 600 seconds | 60 seconds–24 hours |
+| Yuhaiin | 5 seconds | 1 second–1 hour |
+| Rotation | 8 seconds | 2–60 seconds |
+
+The app also supports English, Traditional Chinese, Japanese, and Korean. The
+initial language follows the preferred language in macOS and can be changed in
+Settings.
+
+## Data storage and security
+
+- Non-sensitive preferences are stored in
+  `~/Library/Application Support/StatusBar/settings.json`.
+- Yuhaiin and AWS secrets are stored together in the macOS Keychain and are
+  not written to `settings.json`.
+- AWS requests use native HTTPS and SigV4 signing; the app does not invoke the
+  AWS CLI.
+- Provider requests are made only when a provider is active or the dashboard is
+  open.
+
+## Release a build
+
+Pushing a version tag starts the GitHub Actions release workflow:
 
 ```sh
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The workflow creates `StatusBar-v0.1.0.zip` and `SHA256SUMS`. It can also be
-started manually from the Actions page by supplying a release tag. The current
-workflow uses an ad-hoc signature; Apple Developer signing and notarization
-can be added later if public distribution requires it.
+The workflow builds the app on macOS, creates
+`StatusBar-v0.1.0.zip`, generates `SHA256SUMS`, and uploads both to the GitHub
+Release. It can also be started manually from Actions with a tag such as
+`v0.1.0`.
 
-The app stores non-sensitive preferences in
-`~/Library/Application Support/StatusBar/settings.json` and secrets in the
-macOS Keychain as one combined credential item, so saving settings requires a
-single Keychain authorization; when all credential fields are empty, saving
-does not touch Keychain. The menu bar value can be switched between all registered
-providers from Settings. The provider protocol is intentionally independent
-from the UI so future custom metrics can be added without changing the status
-item or settings flow.
+## Troubleshooting
 
-The bundled icon is reused from the original Codex usage utility so the merged
-app keeps a familiar visual identity while the new panel uses a shared glass
-surface and animated metric cards.
+### A card says “Not configured”
 
-Codex, Lightsail and Yuhaiin each have an independent refresh timer. The
-default intervals are 300 seconds, 600 seconds and 5 seconds respectively;
-the values can be changed separately in Settings.
+Open Settings and check the provider-specific values. For Codex, verify that
+`~/.codex/auth.json` exists and contains both required token fields. For AWS,
+verify the selected profile and its region. For Yuhaiin, verify that the
+management API is reachable at the configured URL.
 
-Refresh work is visibility-aware: while the panel is closed, only the provider
-currently shown in the menu bar is refreshed. Opening the panel temporarily
-refreshes all providers for the dashboard, and cycle mode keeps all providers
-active because each one can be shown in the menu bar. Providers that are no
-longer needed have their in-flight tasks cancelled.
+### A card says “Read failed”
 
-Lightsail also queries AWS Cost Explorer for the current month's billed
-Lightsail transfer. The menu bar and primary remaining value always use the
-near-real-time instance metrics; billing is shown separately as a delayed
-reference. Cost Explorer data is cached for 24 hours because AWS billing data
-can lag by roughly a day.
+Open the card for the detailed error, then use refresh again. Common causes are
+expired Codex authentication, missing AWS IAM permissions, an incorrect AWS
+region, or a stopped Yuhaiin service.
 
-Click any dashboard card to open provider-specific details. Codex includes
-rate-limit windows, reset information, credits and account fields. Lightsail
-includes the summary plus each instance's region, state, public IP, bundle
-specification and NetworkIn/NetworkOut usage. Yuhaiin includes live rates,
-cumulative totals and the management endpoint.
+### The app does not open after downloading
 
-AWS uses native HTTPS JSON API requests signed with SigV4. It does not spawn
-the AWS CLI. Credentials can be entered in Settings, supplied through
-`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, or read from the selected AWS
-profile in `~/.aws/credentials`. If Region is blank, the app uses `AWS_REGION`,
-`AWS_DEFAULT_REGION`, or the selected profile's `region` in `~/.aws/config`,
-then falls back to `ap-northeast-1`.
+Because releases use ad-hoc signing, macOS may block the first launch. Open
+System Settings → Privacy & Security and allow `StatusBar.app`, then launch it
+again.
 
-The direct AWS client currently supports static credentials; AWS SSO and
-`credential_process` profiles are not yet handled.
+## Project layout
+
+This is a dependency-free Swift app built directly with `swiftc`:
+
+- `AppDelegate.swift` — menu bar item, floating panel, and refresh lifecycle
+- `Views.swift` — dashboard, details, and Settings UI
+- `Providers.swift` — Codex and Yuhaiin providers
+- `AWSClient.swift` — AWS credential resolution, SigV4 client, and Lightsail
+- `Configuration.swift` — preferences and Keychain storage
+- `Models.swift` — shared settings and metric models
+- `build.sh` — local app bundle build script
+
+Contributions are welcome. Please keep provider logic independent from the UI
+so new metrics can be added without changing the menu bar or Settings flow.
