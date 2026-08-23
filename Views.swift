@@ -260,7 +260,7 @@ struct StatusOrb: View {
             Image(systemName: state == .ready ? "checkmark" : "ellipsis").font(.system(size: 16, weight: .bold)).foregroundStyle(color)
         }
         .onAppear { updateAnimation(isAnimating) }
-        .onChange(of: isAnimating) { active in updateAnimation(active) }
+        .onChange(of: isAnimating) { _, active in updateAnimation(active) }
     }
 
     private func updateAnimation(_ active: Bool) {
