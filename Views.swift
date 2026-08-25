@@ -408,6 +408,12 @@ struct DetailView: View {
         let window = detailValue(section, .primaryWindow)
         let reset = detailValue(section, .reset)
         let resetIn = detailValue(section, .resetIn)
+        let secondaryLabel = L10n.text(.secondaryWindow, language)
+        let secondaryUsedLabel = "\(secondaryLabel) \(L10n.text(.used, language))"
+        let secondaryResetInLabel = "\(secondaryLabel) \(L10n.text(.resetIn, language))"
+        let secondaryWindow = section.rows.first(where: { $0.label == secondaryLabel })?.value
+        let secondaryUsed = section.rows.first(where: { $0.label == secondaryUsedLabel })?.value
+        let secondaryResetIn = section.rows.first(where: { $0.label == secondaryResetInLabel })?.value
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
@@ -433,6 +439,29 @@ struct DetailView: View {
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(L10n.text(.resetIn, language)).font(.caption2).foregroundStyle(.secondary)
                     Text(resetIn).font(.caption.weight(.medium))
+                }
+            }
+            if let secondaryWindow, secondaryWindow != "-" {
+                Divider().opacity(0.5)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Label(secondaryLabel, systemImage: "calendar")
+                            .font(.caption.weight(.medium))
+                        Spacer()
+                        Text(secondaryWindow)
+                            .font(.caption.weight(.medium))
+                    }
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(L10n.text(.used, language)).font(.caption2).foregroundStyle(.secondary)
+                            Text(secondaryUsed ?? "—").font(.caption.weight(.medium))
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 3) {
+                            Text(L10n.text(.resetIn, language)).font(.caption2).foregroundStyle(.secondary)
+                            Text(secondaryResetIn ?? "—").font(.caption.weight(.medium))
+                        }
+                    }
                 }
             }
         }
