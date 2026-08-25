@@ -157,7 +157,8 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The workflow builds the app on macOS, creates
+The workflow builds a universal macOS app for both Apple silicon (`arm64`) and
+Intel (`x86_64`), creates
 `StatusBar-v0.1.0.zip`, generates `SHA256SUMS`, and uploads both to the GitHub
 Release. It can also be started manually from Actions with a tag such as
 `v0.1.0`.
