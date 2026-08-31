@@ -63,7 +63,6 @@ enum CopyKey: String {
     case closeSettings
     case live
     case instances
-    case billing
     case observed
     case details
     case closeDetails
@@ -93,15 +92,6 @@ enum CopyKey: String {
     case limited
     case ok
     case monthly
-    case yes
-    case no
-    case billingUsage
-    case billingRemaining
-    case billingIn
-    case billingOut
-    case estimated
-    case fetchedAt
-    case billingUnavailable
 }
 
 enum L10n {
@@ -168,7 +158,6 @@ enum L10n {
         .closeSettings: [.traditionalChinese: "返回總覽", .english: "Back to overview", .japanese: "概要に戻る", .korean: "개요로 돌아가기"],
         .live: [.traditionalChinese: "即時", .english: "Live", .japanese: "ライブ", .korean: "실시간"],
         .instances: [.traditionalChinese: "個執行個體", .english: "instances", .japanese: "インスタンス", .korean: "인스턴스"],
-        .billing: [.traditionalChinese: "計費", .english: "Billing", .japanese: "請求", .korean: "청구"],
         .observed: [.traditionalChinese: "觀測", .english: "Observed", .japanese: "観測", .korean: "관측"],
         .details: [.traditionalChinese: "詳細資料", .english: "Details", .japanese: "詳細", .korean: "세부 정보"],
         .closeDetails: [.traditionalChinese: "返回總覽", .english: "Back to overview", .japanese: "概要に戻る", .korean: "개요로 돌아가기"],
@@ -198,15 +187,6 @@ enum L10n {
         .limited: [.traditionalChinese: "受限", .english: "Limited", .japanese: "制限中", .korean: "제한됨"],
         .ok: [.traditionalChinese: "正常", .english: "OK", .japanese: "正常", .korean: "정상"],
         .monthly: [.traditionalChinese: "每月", .english: "mo", .japanese: "月", .korean: "월"],
-        .yes: [.traditionalChinese: "是", .english: "Yes", .japanese: "はい", .korean: "예"],
-        .no: [.traditionalChinese: "否", .english: "No", .japanese: "いいえ", .korean: "아니요"],
-        .billingUsage: [.traditionalChinese: "計費已用", .english: "Billed usage", .japanese: "請求上の使用量", .korean: "청구 사용량"],
-        .billingRemaining: [.traditionalChinese: "計費剩餘", .english: "Billed remaining", .japanese: "請求上の残量", .korean: "청구 잔여량"],
-        .billingIn: [.traditionalChinese: "計費流入", .english: "Billed inbound", .japanese: "請求上の受信", .korean: "청구 인바운드"],
-        .billingOut: [.traditionalChinese: "計費流出", .english: "Billed outbound", .japanese: "請求上の送信", .korean: "청구 아웃바운드"],
-        .estimated: [.traditionalChinese: "估算", .english: "Estimated", .japanese: "推定", .korean: "추정"],
-        .fetchedAt: [.traditionalChinese: "讀取時間", .english: "Fetched at", .japanese: "取得時刻", .korean: "가져온 시간"],
-        .billingUnavailable: [.traditionalChinese: "無法讀取 Cost Explorer", .english: "Cost Explorer unavailable", .japanese: "Cost Explorerを取得できません", .korean: "Cost Explorer를 사용할 수 없음"],
     ]
 
     static func text(_ key: CopyKey, _ language: AppLanguage) -> String {
