@@ -233,36 +233,10 @@ private struct LightsailUsageDetail {
     let error: String?
 }
 
-struct LightsailBillingUsage {
-    let networkIn: Double
-    let networkOut: Double
-    let estimated: Bool
-    let fetchedAt: Date
-
-    var total: Double { networkIn + networkOut }
-}
-
 final class LightsailProvider: MetricProvider {
     let id = StatusMetricID.lightsail.rawValue
     private var settings: AppSettings
     private let lock = NSLock()
-    private static let billingCacheLock = NSLock()
-    private static var billingCache: [String: LightsailBillingUsage] = [:]
-    private static let billingCacheTTL: TimeInterval = 86_400
-
-    private static func cachedBilling(for key: String) -> LightsailBillingUsage? {
-        billingCacheLock.lock()
-        defer { billingCacheLock.unlock() }
-        guard let value = billingCache[key], Date().timeIntervalSince(value.fetchedAt) < billingCacheTTL else { return nil }
-        return value
-    }
-
-    private static func storeBilling(_ value: LightsailBillingUsage, for key: String) {
-        billingCacheLock.lock()
-        billingCache[key] = value
-        billingCacheLock.unlock()
-    }
-
     init(settings: AppSettings) { self.settings = settings }
 
     func update(settings: AppSettings) {
@@ -309,21 +283,10 @@ final class LightsailProvider: MetricProvider {
         }
 
         let remaining = max(allowance - used, 0)
-        let billing: LightsailBillingUsage?
-        let billingError: String?
-        do {
-            billing = try await getBillingUsage(credentials: credentials, profile: currentSettings.awsProfile)
-            billingError = nil
-        } catch {
-            billing = nil
-            billingError = error.localizedDescription
-        }
-        // Billing data is useful context but may lag by roughly a day. The
-        // primary status therefore always follows the near-real-time metrics.
         let percent = allowance > 0 ? remaining / allowance * 100 : nil
         let subtitle = "\(Fmt.percent(percent)) \(L10n.text(.remaining, language)) · \(instances.count) \(L10n.text(.instances, language))"
         let status = errors.count == instances.count && !instances.isEmpty ? MetricState.failed : .ready
-        var summaryRows = [
+        let summaryRows = [
             MetricRow(label: L10n.text(.used, language), value: Fmt.bytes(used)),
             MetricRow(label: L10n.text(.total, language), value: Fmt.bytes(allowance)),
             MetricRow(label: L10n.text(.remaining, language), value: Fmt.bytes(remaining)),
@@ -331,25 +294,6 @@ final class LightsailProvider: MetricProvider {
             MetricRow(label: L10n.text(.period, language), value: "\(Fmt.date(start.timeIntervalSince1970, language: language)) – \(Fmt.date(now.timeIntervalSince1970, language: language))"),
         ]
         var detailSections = [MetricDetailSection(id: "summary", title: L10n.text(.summary, language), rows: summaryRows)]
-        if let billing {
-            let billingRows = [
-                MetricRow(label: L10n.text(.billingUsage, language), value: Fmt.bytes(billing.total)),
-                MetricRow(label: L10n.text(.billingRemaining, language), value: Fmt.bytes(max(allowance - billing.total, 0))),
-                MetricRow(label: L10n.text(.billingIn, language), value: Fmt.bytes(billing.networkIn)),
-                MetricRow(label: L10n.text(.billingOut, language), value: Fmt.bytes(billing.networkOut)),
-                MetricRow(label: L10n.text(.estimated, language), value: billing.estimated ? L10n.text(.yes, language) : L10n.text(.no, language)),
-                MetricRow(label: L10n.text(.fetchedAt, language), value: Fmt.clock(billing.fetchedAt)),
-            ]
-            detailSections.append(MetricDetailSection(id: "billing", title: L10n.text(.billing, language), rows: billingRows))
-            summaryRows.insert(MetricRow(label: L10n.text(.billingUsage, language), value: Fmt.bytes(billing.total)), at: 0)
-            summaryRows.insert(MetricRow(label: L10n.text(.billingRemaining, language), value: Fmt.bytes(max(allowance - billing.total, 0))), at: 1)
-            detailSections[0] = MetricDetailSection(id: "summary", title: L10n.text(.summary, language), rows: summaryRows)
-        } else if let billingError {
-            detailSections.append(MetricDetailSection(id: "billing", title: L10n.text(.billing, language), rows: [
-                MetricRow(label: L10n.text(.status, language), value: L10n.text(.billingUnavailable, language)),
-                MetricRow(label: L10n.text(.error, language), value: billingError),
-            ]))
-        }
         for detail in usageDetails {
             let instance = detail.instance
             let bundle = detail.bundle
@@ -377,12 +321,7 @@ final class LightsailProvider: MetricProvider {
             id: id,
             value: allowance > 0 ? Fmt.bytes(remaining) : "—",
             subtitle: subtitle,
-            rows: billing.map { [
-                MetricRow(label: L10n.text(.used, language), value: Fmt.bytes(used)),
-                MetricRow(label: L10n.text(.remaining, language), value: Fmt.bytes(remaining)),
-                MetricRow(label: L10n.text(.billingUsage, language), value: Fmt.bytes($0.total)),
-                MetricRow(label: L10n.text(.status, language), value: errors.isEmpty ? L10n.text(.ready, language) : errors[0]),
-            ] } ?? [
+            rows: [
                 MetricRow(label: L10n.text(.used, language), value: Fmt.bytes(used)),
                 MetricRow(label: L10n.text(.total, language), value: Fmt.bytes(allowance)),
                 MetricRow(label: L10n.text(.observed, language), value: Fmt.bytes(used)),
@@ -394,72 +333,8 @@ final class LightsailProvider: MetricProvider {
             state: status,
             progress: percent,
             updatedAt: Date(),
-            errorMessage: errors.isEmpty ? billingError : errors.joined(separator: "\n")
+            errorMessage: errors.isEmpty ? nil : errors.joined(separator: "\n")
         )
-    }
-
-    private func getBillingUsage(credentials: AWSCredentials, profile: String) async throws -> LightsailBillingUsage {
-        let cacheKey = profile.isEmpty ? "default" : profile
-        if let cached = Self.cachedBilling(for: cacheKey) { return cached }
-
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
-        let now = Date()
-        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
-        let end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now
-        let formatter = DateFormatter()
-        formatter.calendar = calendar
-        formatter.timeZone = calendar.timeZone
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        let parameters: [String: Any] = [
-            "TimePeriod": ["Start": formatter.string(from: monthStart), "End": formatter.string(from: end)],
-            "Granularity": "MONTHLY",
-            "Metrics": ["UsageQuantity"],
-            "Filter": ["Dimensions": ["Key": "SERVICE", "Values": ["Amazon Lightsail"]]],
-            "GroupBy": [["Type": "DIMENSION", "Key": "USAGE_TYPE"]],
-        ]
-        let client = AWSSignedJSONClient(credentials: credentials)
-        let data = try await client.query(service: "ce", region: "us-east-1", action: "GetCostAndUsage", targetPrefix: "AWSInsightsIndexService", parameters: parameters)
-        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw AWSClientError.invalidJSON }
-        let results = root["ResultsByTime"] as? [[String: Any]] ?? []
-        var networkIn = 0.0
-        var networkOut = 0.0
-        var estimated = false
-        for result in results {
-            estimated = estimated || (result["Estimated"] as? Bool ?? false)
-            for group in result["Groups"] as? [[String: Any]] ?? [] {
-                guard let usageType = (group["Keys"] as? [String])?.first,
-                      let metrics = group["Metrics"] as? [String: Any],
-                      let usage = metrics["UsageQuantity"] as? [String: Any] else { continue }
-                let amount: Double
-                if let raw = usage["Amount"] as? String { amount = Double(raw) ?? 0 }
-                else if let raw = usage["Amount"] as? NSNumber { amount = raw.doubleValue }
-                else { amount = 0 }
-                let bytes = billingAmountToBytes(amount, unit: usage["Unit"] as? String ?? "GB")
-                let normalized = usageType.lowercased()
-                if normalized.hasSuffix("-totaldataxfer-in-bytes") || normalized.contains("dataxfer-in") {
-                    networkIn += bytes
-                } else if normalized.hasSuffix("-totaldataxfer-out-bytes") || normalized.contains("dataxfer-out") {
-                    networkOut += bytes
-                }
-            }
-        }
-        let billing = LightsailBillingUsage(networkIn: networkIn, networkOut: networkOut, estimated: estimated, fetchedAt: Date())
-        Self.storeBilling(billing, for: cacheKey)
-        return billing
-    }
-
-    private func billingAmountToBytes(_ amount: Double, unit: String) -> Double {
-        switch unit.uppercased() {
-        case "BYTES", "BYTE": return amount
-        case "KB": return amount * 1024
-        case "MB": return amount * 1024 * 1024
-        case "GB": return amount * 1024 * 1024 * 1024
-        case "TB": return amount * 1024 * 1024 * 1024 * 1024
-        default: return amount * 1024 * 1024 * 1024
-        }
     }
 
     private func currentSettingsValue() -> AppSettings {

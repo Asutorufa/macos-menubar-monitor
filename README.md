@@ -3,7 +3,7 @@
 Status Bar is a lightweight macOS menu bar monitor for three kinds of data:
 
 - Codex quota and rate-limit windows
-- AWS Lightsail transfer usage and billing context
+- AWS Lightsail transfer usage
 - Yuhaiin live upload/download traffic
 
 It runs as a menu bar accessory, so there is no Dock icon or background server
@@ -99,15 +99,13 @@ Region resolution follows this order:
 4. The selected profile's region in `~/.aws/config`
 5. `ap-northeast-1`
 
-The AWS card reads instance metadata and `NetworkIn`/`NetworkOut` metrics from
-Lightsail. It also displays a separate Cost Explorer view for the current
-month. Live instance usage is the primary value; billing data is only a
-reference because AWS billing can lag and is cached for up to 24 hours.
+The AWS card reads instance metadata and the current month's `NetworkIn` and
+`NetworkOut` metrics directly from Lightsail. It does not call the separately
+charged Cost Explorer API.
 
-The IAM identity needs permission to read Lightsail instances, bundles, and
-instance metrics. Cost Explorer permission is additionally required for the
-billing section. AWS SSO and `credential_process` profiles are not supported by
-the direct client yet.
+The IAM identity only needs permission to read Lightsail instances, bundles,
+and instance metrics. AWS SSO and `credential_process` profiles are not
+supported by the direct client yet.
 
 ### Yuhaiin
 
