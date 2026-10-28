@@ -115,10 +115,19 @@ The default management endpoint is:
 http://127.0.0.1:50051
 ```
 
-If your Yuhaiin endpoint is different, enter it in Settings. If authentication
-is enabled, enter the Basic token; the app adds the `Basic ` prefix when it is
-missing. The card uses the management API's total connection counters to show
-current download/upload rates and cumulative totals.
+If your Yuhaiin endpoint is different, enter it in Settings. When management
+authentication is enabled, create a **Yuhaiin API token** with only the
+`connections:read` scope and paste the secret into Settings → Yuhaiin token.
+The app sends `Authorization: Bearer <token>`; you may paste the token with or
+without the `Bearer ` prefix. Browser sessions expire and the old Basic
+authentication is no longer accepted, so use an API token for continuous
+monitoring. No token is needed if the management API is running without user
+authentication.
+
+The card calls `POST /api/v2/rpc/connections.total` and uses cumulative
+download/upload counters to compute live rates. The token is stored in macOS
+Keychain, not `settings.json`. For remote management endpoints, use HTTPS
+with a trusted certificate.
 
 ## Settings and refresh rates
 
