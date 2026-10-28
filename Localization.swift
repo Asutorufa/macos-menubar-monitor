@@ -143,7 +143,7 @@ enum L10n {
         .status: [.traditionalChinese: "狀態", .english: "Status", .japanese: "ステータス", .korean: "상태"],
         .yuhaiinURL: [.traditionalChinese: "Yuhaiin 位址", .english: "Yuhaiin URL", .japanese: "Yuhaiin URL", .korean: "Yuhaiin URL"],
         .yuhaiinToken: [.traditionalChinese: "Yuhaiin Token", .english: "Yuhaiin token", .japanese: "Yuhaiin トークン", .korean: "Yuhaiin 토큰"],
-        .yuhaiinHint: [.traditionalChinese: "預設管理位址為 http://127.0.0.1:50051；若啟用驗證，填入前端使用的 Basic token。", .english: "Default management address is http://127.0.0.1:50051. Add the Basic token if authentication is enabled.", .japanese: "既定の管理アドレスは http://127.0.0.1:50051。認証を有効にしている場合はBasic tokenを入力してください。", .korean: "기본 관리 주소는 http://127.0.0.1:50051입니다. 인증을 사용하면 Basic token을 입력하세요."],
+        .yuhaiinHint: [.traditionalChinese: "預設管理位址：http://127.0.0.1:50051。若啟用驗證，請填入僅授予 connections:read 權限的 API Token。", .english: "Default: http://127.0.0.1:50051. If authentication is enabled, use an API token scoped to connections:read.", .japanese: "既定の管理アドレス: http://127.0.0.1:50051。認証が有効な場合は、connections:read 権限だけを持つ API トークンを入力してください。", .korean: "기본 관리 주소: http://127.0.0.1:50051. 인증이 활성화된 경우 connections:read 권한만 부여된 API 토큰을 입력하세요."],
         .awsSettings: [.traditionalChinese: "AWS Lightsail", .english: "AWS Lightsail", .japanese: "AWS Lightsail", .korean: "AWS Lightsail"],
         .awsAccessKey: [.traditionalChinese: "Access Key ID", .english: "Access key ID", .japanese: "Access Key ID", .korean: "Access Key ID"],
         .awsSecretKey: [.traditionalChinese: "Secret Access Key", .english: "Secret access key", .japanese: "Secret Access Key", .korean: "Secret Access Key"],

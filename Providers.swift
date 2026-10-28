@@ -201,14 +201,29 @@ final class YuhaiinProvider: MetricProvider {
         request.httpBody = Data("{}".utf8)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if !currentSettings.yuhaiinToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let token = currentSettings.yuhaiinToken.hasPrefix("Basic ") ? currentSettings.yuhaiinToken : "Basic \(currentSettings.yuhaiinToken)"
-            request.setValue(token, forHTTPHeaderField: "Authorization")
+        let credential = currentSettings.yuhaiinToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !credential.isEmpty {
+            if credential.lowercased().hasPrefix("basic ") {
+                throw ProviderError.message("Yuhaiin no longer supports Basic authentication. Use an API token with connections:read permission.")
+            }
+            let token = credential.lowercased().hasPrefix("bearer ")
+                ? String(credential.dropFirst("Bearer ".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+                : credential
+            guard !token.isEmpty else { throw ProviderError.notConfigured }
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw ProviderError.message("HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)")
+        guard let http = response as? HTTPURLResponse else { throw ProviderError.invalidResponse }
+        switch http.statusCode {
+        case 200..<300:
+            break
+        case 401:
+            throw ProviderError.message("HTTP 401: Invalid or expired Yuhaiin API token.")
+        case 403:
+            throw ProviderError.message("HTTP 403: Check the connections:read scope and management endpoint access.")
+        default:
+            throw ProviderError.message("HTTP \(http.statusCode)")
         }
 
         let flow = try JSONDecoder().decode(YuhaiinTotalFlow.self, from: data)
