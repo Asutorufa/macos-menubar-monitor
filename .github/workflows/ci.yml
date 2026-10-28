@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Codex usage decoding
+        run: |
+          swiftc CodexUsage.swift Tests/CodexUsageDecode/main.swift -o /tmp/codex-usage-decode
+          /tmp/codex-usage-decode Tests/Fixtures/codex-rate-limit-exhausted.json
+      - name: Build macOS app
+        run: ARCHS=arm64 ./build.sh
