@@ -1,51 +1,5 @@
 import Foundation
 
-struct CodexUsageResponse: Decodable {
-    let userId: String?
-    let accountId: String?
-    let email: String?
-    let planType: String?
-    let rateLimit: CodexRateLimit?
-    let codeReviewRateLimit: CodexRateLimit?
-    let credits: CodexCredits?
-    let spendControl: CodexSpendControl?
-    let rateLimitReachedType: String?
-    let promo: String?
-    let rateLimitResetCredits: CodexResetCredits?
-}
-
-struct CodexRateLimit: Decodable {
-    let allowed: Bool?
-    let limitReached: Bool?
-    let primaryWindow: CodexWindow?
-    let secondaryWindow: CodexWindow?
-}
-
-struct CodexWindow: Decodable {
-    let usedPercent: Int?
-    let limitWindowSeconds: Int?
-    let resetAfterSeconds: Int?
-    let resetAt: TimeInterval?
-}
-
-struct CodexCredits: Decodable {
-    let hasCredits: Bool?
-    let balance: String?
-    let unlimited: Bool?
-    let overageLimitReached: Bool?
-    let approxLocalMessages: [Int]?
-    let approxCloudMessages: [Int]?
-}
-
-struct CodexSpendControl: Decodable {
-    let reached: Bool?
-}
-
-struct CodexResetCredits: Decodable {
-    let availableCount: Int?
-    let applicableAvailableCount: Int?
-}
-
 struct CodexAuthFile: Decodable {
     struct Tokens: Decodable {
         let accessToken: String?
