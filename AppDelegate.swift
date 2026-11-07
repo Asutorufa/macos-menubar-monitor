@@ -7,7 +7,7 @@ final class RoundedHostingView: NSView {
     override func layout() {
         super.layout()
         wantsLayer = true
-        layer?.cornerRadius = 22
+        layer?.cornerRadius = Radius.panel
         layer?.cornerCurve = .continuous
         layer?.masksToBounds = true
     }
@@ -28,6 +28,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var globalMonitor: Any?
     private var localMonitor: Any?
     private var cancellables = Set<AnyCancellable>()
+    /// Intended visibility; differs from `panel.isVisible` while the hide fade runs.
+    private var panelShown = false
+    /// Bumped on every show/hide so a stale hide completion cannot order out a re-shown panel.
+    private var panelGeneration = 0
 
     private let panelSize = NSSize(width: 480, height: 680)
 
@@ -141,51 +145,65 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func togglePanel(_ sender: Any?) {
-        if panel?.isVisible == true { hidePanel() } else { showPanel() }
+        if panelShown { hidePanel() } else { showPanel() }
     }
 
     private func showPanel() {
         guard let panel, let button = statusItem.button, let window = button.window, let screen = window.screen ?? NSScreen.main else { return }
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let buttonRect = window.convertToScreen(button.convert(button.bounds, to: nil))
         let visible = screen.visibleFrame
         let x = max(visible.minX + 8, min(buttonRect.maxX - panelSize.width, visible.maxX - panelSize.width - 8))
         let y = max(visible.minY + 8, visible.maxY - panelSize.height - 8)
         let finalFrame = NSRect(x: x, y: y, width: panelSize.width, height: panelSize.height)
-        panel.setFrame(finalFrame.offsetBy(dx: 0, dy: 8), display: false)
-        panel.alphaValue = 0
-        panel.contentView?.wantsLayer = true
-        panel.contentView?.layer?.transform = CATransform3DMakeScale(0.97, 0.97, 1)
+
+        panelShown = true
+        panelGeneration += 1
+        // If a hide fade is still running, continue from its current alpha instead of flashing.
+        if !panel.isVisible { panel.alphaValue = 0 }
+        panel.setFrame(reduceMotion ? finalFrame : finalFrame.offsetBy(dx: 0, dy: 6), display: false)
         panel.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
+        // SwiftUI content scales in from the top-trailing corner (next to the status item).
         store.setPanelVisible(true)
         restartTimers()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.18
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            context.duration = reduceMotion ? 0.12 : 0.24
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.25, 1)
             panel.animator().alphaValue = 1
             panel.animator().setFrame(finalFrame, display: true)
-            CATransaction.begin()
-            CATransaction.setAnimationDuration(0.18)
-            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
-            panel.contentView?.layer?.transform = CATransform3DIdentity
-            CATransaction.commit()
         }
         startEventMonitors()
     }
 
     private func hidePanel() {
+        guard panelShown else { return }
+        panelShown = false
         stopEventMonitors()
-        store.setPanelVisible(false)
-        restartTimers()
-        guard let panel, panel.isVisible else { return }
+        guard let panel, panel.isVisible else {
+            store.setPanelVisible(false)
+            restartTimers()
+            return
+        }
+        panelGeneration += 1
+        let generation = panelGeneration
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.12
+            context.duration = 0.14
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().alphaValue = 0
-        } completionHandler: {
-            panel.orderOut(nil)
-            panel.alphaValue = 1
+            if !reduceMotion { panel.animator().setFrame(panel.frame.offsetBy(dx: 0, dy: 4), display: true) }
+        } completionHandler: { [weak self] in
+            Task { @MainActor [weak self] in
+                // Keep the SwiftUI content alive until the fade finishes, otherwise the
+                // panel empties instantly and the fade animates nothing.
+                guard let self, self.panelGeneration == generation else { return }
+                panel.orderOut(nil)
+                panel.alphaValue = 1
+                self.store.setPanelVisible(false)
+                self.restartTimers()
+            }
         }
     }
 

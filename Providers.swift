@@ -187,13 +187,16 @@ final class YuhaiinProvider: MetricProvider {
 
         let downloadRate: Double
         let uploadRate: Double
+        let liveRate: LiveRate?
         if let old, now.timeIntervalSince(old.at) > 0 {
             let interval = now.timeIntervalSince(old.at)
             downloadRate = max(0, (download - old.download) / interval)
             uploadRate = max(0, (upload - old.upload) / interval)
+            liveRate = LiveRate(download: downloadRate, upload: uploadRate, at: now)
         } else {
             downloadRate = 0
             uploadRate = 0
+            liveRate = nil
         }
 
         return MetricSnapshot(
@@ -223,7 +226,8 @@ final class YuhaiinProvider: MetricProvider {
             state: .ready,
             progress: nil,
             updatedAt: now,
-            errorMessage: nil
+            errorMessage: nil,
+            liveRate: liveRate
         )
     }
 

@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import SwiftUI
 
 final class MetricProviderRegistry {
     private(set) var providers: [MetricProvider]
@@ -28,6 +29,9 @@ final class AppStore: ObservableObject {
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastRefresh: Date?
     @Published private(set) var isPanelVisible = false
+    @Published private(set) var rateHistory: [String: [LiveRate]] = [:]
+
+    static let historyCapacity = 60
 
     var providerIDs: [String] { registry.ids }
     var statusMetricIDs: [String] { registry.ids + [StatusMetricID.cycle.rawValue] }
@@ -135,10 +139,18 @@ final class AppStore: ObservableObject {
             }
 
             guard !Task.isCancelled else { return }
-            guard self?.refreshTokens[providerID] == refreshToken else { return }
-            self?.snapshots[provider.id] = snapshot
-            self?.reconcileCycle()
-            self?.lastRefresh = Date()
+            guard let self, self.refreshTokens[providerID] == refreshToken else { return }
+            withAnimation(Motion.update) {
+                self.snapshots[provider.id] = snapshot
+                self.reconcileCycle()
+            }
+            if let rate = snapshot.liveRate {
+                var history = self.rateHistory[provider.id] ?? []
+                history.append(rate)
+                if history.count > Self.historyCapacity { history.removeFirst(history.count - Self.historyCapacity) }
+                self.rateHistory[provider.id] = history
+            }
+            self.lastRefresh = Date()
         }
     }
 
@@ -151,11 +163,13 @@ final class AppStore: ObservableObject {
             cycleMetricID = nil
             return
         }
-        guard let current = cycleMetricID, let index = available.firstIndex(of: current) else {
-            cycleMetricID = available[0]
-            return
+        withAnimation(Motion.update) {
+            if let current = cycleMetricID, let index = available.firstIndex(of: current) {
+                cycleMetricID = available[(index + 1) % available.count]
+            } else {
+                cycleMetricID = available[0]
+            }
         }
-        cycleMetricID = available[(index + 1) % available.count]
     }
 
     private var availableMetricIDs: [String] {
