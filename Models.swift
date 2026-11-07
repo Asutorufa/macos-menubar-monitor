@@ -67,6 +67,12 @@ enum MetricDetailStyle: Equatable {
     case codexQuota
 }
 
+struct LiveRate: Equatable {
+    let download: Double
+    let upload: Double
+    let at: Date
+}
+
 struct MetricSnapshot: Identifiable {
     let id: String
     let value: String
@@ -79,6 +85,7 @@ struct MetricSnapshot: Identifiable {
     let progress: Double?
     let updatedAt: Date?
     let errorMessage: String?
+    var liveRate: LiveRate? = nil
 }
 
 protocol MetricProvider: AnyObject {
