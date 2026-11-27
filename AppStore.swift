@@ -53,6 +53,7 @@ final class AppStore: ObservableObject {
         self.settings = loadedSettings
         self.registry = registry ?? MetricProviderRegistry(providers: [
             CodexProvider(),
+            AntigravityProvider(settings: loadedSettings),
             LightsailProvider(settings: loadedSettings),
             YuhaiinProvider(settings: loadedSettings),
         ])
@@ -76,6 +77,7 @@ final class AppStore: ObservableObject {
     func refreshInterval(for providerID: String) -> TimeInterval {
         switch providerID {
         case StatusMetricID.codex.rawValue: return settings.codexRefreshInterval
+        case StatusMetricID.antigravity.rawValue: return settings.antigravityRefreshInterval
         case StatusMetricID.lightsail.rawValue: return settings.lightsailRefreshInterval
         case StatusMetricID.yuhaiin.rawValue: return settings.yuhaiinRefreshInterval
         default: return 60
@@ -85,9 +87,11 @@ final class AppStore: ObservableObject {
     func applySettings(_ newSettings: AppSettings) {
         var normalized = newSettings
         normalized.codexRefreshInterval = max(30, min(normalized.codexRefreshInterval, 86_400))
+        normalized.antigravityRefreshInterval = max(30, min(normalized.antigravityRefreshInterval, 86_400))
         normalized.lightsailRefreshInterval = max(60, min(normalized.lightsailRefreshInterval, 86_400))
         normalized.yuhaiinRefreshInterval = max(1, min(normalized.yuhaiinRefreshInterval, 3_600))
         normalized.cycleDisplayInterval = max(2, min(normalized.cycleDisplayInterval, 60))
+        normalized.antigravityCLIPath = normalized.antigravityCLIPath.trimmingCharacters(in: .whitespacesAndNewlines)
         normalized.yuhaiinURL = normalized.yuhaiinURL.trimmingCharacters(in: .whitespacesAndNewlines)
         normalized.awsRegion = normalized.awsRegion.trimmingCharacters(in: .whitespacesAndNewlines)
         settings = normalized

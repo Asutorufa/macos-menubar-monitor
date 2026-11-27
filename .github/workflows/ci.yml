@@ -14,5 +14,9 @@ jobs:
         run: |
           swiftc CodexUsage.swift Tests/CodexUsageDecode/main.swift -o /tmp/codex-usage-decode
           /tmp/codex-usage-decode Tests/Fixtures/codex-rate-limit-exhausted.json
+      - name: Test Antigravity usage decoding
+        run: |
+          swiftc AntigravityUsage.swift Tests/AntigravityUsageDecode/main.swift -o /tmp/antigravity-usage-decode
+          /tmp/antigravity-usage-decode Tests/Fixtures/antigravity-usage.json
       - name: Build macOS app
         run: ARCHS=arm64 ./build.sh

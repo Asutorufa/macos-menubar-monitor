@@ -11,6 +11,7 @@ enum CopyKey: String {
     case refreshInterval
     case refreshRates
     case codexRefreshRate
+    case antigravityRefreshRate
     case lightsailRefreshRate
     case yuhaiinRefreshRate
     case cycleDisplayRate
@@ -27,10 +28,12 @@ enum CopyKey: String {
     case configure
     case close
     case codex
+    case antigravity
     case lightsail
     case yuhaiin
     case cycle
     case codexDescription
+    case antigravityDescription
     case lightsailDescription
     case yuhaiinDescription
     case cycleDescription
@@ -46,6 +49,9 @@ enum CopyKey: String {
     case window
     case resetIn
     case status
+    case antigravitySettings
+    case antigravityCLIPath
+    case antigravityHint
     case yuhaiinURL
     case yuhaiinToken
     case yuhaiinHint
@@ -87,6 +93,9 @@ enum CopyKey: String {
     case specification
     case system
     case endpoint
+    case cliPath
+    case fiveHourWindow
+    case weeklyWindow
     case state
     case period
     case limited
@@ -106,6 +115,7 @@ enum L10n {
         .refreshInterval: [.traditionalChinese: "更新頻率", .english: "Refresh interval", .japanese: "更新間隔", .korean: "새로 고침 간격"],
         .refreshRates: [.traditionalChinese: "資料更新頻率", .english: "Data refresh rates", .japanese: "データ更新間隔", .korean: "데이터 새로 고침 간격"],
         .codexRefreshRate: [.traditionalChinese: "Codex 額度", .english: "Codex quota", .japanese: "Codex 使用量", .korean: "Codex 할당량"],
+        .antigravityRefreshRate: [.traditionalChinese: "Antigravity 額度", .english: "Antigravity quota", .japanese: "Antigravity 使用量", .korean: "Antigravity 할당량"],
         .lightsailRefreshRate: [.traditionalChinese: "Lightsail 流量", .english: "Lightsail traffic", .japanese: "Lightsail 通信量", .korean: "Lightsail 트래픽"],
         .yuhaiinRefreshRate: [.traditionalChinese: "Yuhaiin 即時流量", .english: "Yuhaiin live traffic", .japanese: "Yuhaiin ライブ通信", .korean: "Yuhaiin 실시간 트래픽"],
         .cycleDisplayRate: [.traditionalChinese: "循環展示間隔", .english: "Rotation interval", .japanese: "ローテーション間隔", .korean: "순환 표시 간격"],
@@ -122,10 +132,12 @@ enum L10n {
         .configure: [.traditionalChinese: "前往設定", .english: "Open settings", .japanese: "設定を開く", .korean: "설정 열기"],
         .close: [.traditionalChinese: "關閉", .english: "Close", .japanese: "閉じる", .korean: "닫기"],
         .codex: [.traditionalChinese: "Codex 額度", .english: "Codex quota", .japanese: "Codex 使用量", .korean: "Codex 할당량"],
+        .antigravity: [.traditionalChinese: "Antigravity 額度", .english: "Antigravity quota", .japanese: "Antigravity 使用量", .korean: "Antigravity 할당량"],
         .lightsail: [.traditionalChinese: "Lightsail 流量", .english: "Lightsail traffic", .japanese: "Lightsail 通信量", .korean: "Lightsail 트래픽"],
         .yuhaiin: [.traditionalChinese: "Yuhaiin 即時流量", .english: "Yuhaiin live traffic", .japanese: "Yuhaiin ライブ通信", .korean: "Yuhaiin 실시간 트래픽"],
         .cycle: [.traditionalChinese: "循環展示", .english: "Rotate metrics", .japanese: "メトリクスを循環", .korean: "지표 순환 표시"],
         .codexDescription: [.traditionalChinese: "ChatGPT Codex 5 小時視窗剩餘額度", .english: "Codex five-hour window remaining", .japanese: "Codex 5時間ウィンドウの残量", .korean: "Codex 5시간 창 잔여량"],
+        .antigravityDescription: [.traditionalChinese: "Antigravity 各模型群組 5 小時與每週剩餘額度", .english: "Antigravity five-hour and weekly model quota remaining", .japanese: "Antigravity モデルグループの5時間・週間残量", .korean: "Antigravity 모델 그룹 5시간 및 주간 잔여량"],
         .lightsailDescription: [.traditionalChinese: "AWS Lightsail 本月剩餘傳輸額度", .english: "AWS Lightsail monthly transfer remaining", .japanese: "AWS Lightsail 月間転送残量", .korean: "AWS Lightsail 월간 전송 잔량"],
         .yuhaiinDescription: [.traditionalChinese: "從管理 API 取得目前上下載速度", .english: "Current upload and download speed from the API", .japanese: "管理APIから現在の送受信速度を取得", .korean: "관리 API에서 현재 업로드 및 다운로드 속도"],
         .cycleDescription: [.traditionalChinese: "只循環顯示目前可取得資料的 provider", .english: "Rotate only through providers with available data", .japanese: "データを取得できるプロバイダーだけを循環表示", .korean: "데이터를 사용할 수 있는 provider만 순환 표시"],
@@ -141,6 +153,9 @@ enum L10n {
         .window: [.traditionalChinese: "額度視窗", .english: "Window", .japanese: "ウィンドウ", .korean: "창"],
         .resetIn: [.traditionalChinese: "距離重置", .english: "Reset in", .japanese: "リセットまで", .korean: "재설정까지"],
         .status: [.traditionalChinese: "狀態", .english: "Status", .japanese: "ステータス", .korean: "상태"],
+        .antigravitySettings: [.traditionalChinese: "Antigravity", .english: "Antigravity", .japanese: "Antigravity", .korean: "Antigravity"],
+        .antigravityCLIPath: [.traditionalChinese: "agy CLI 路徑（選填）", .english: "agy CLI path (optional)", .japanese: "agy CLI パス（任意）", .korean: "agy CLI 경로 (선택 사항)"],
+        .antigravityHint: [.traditionalChinese: "留白時會自動搜尋 PATH 與常見安裝路徑，並執行 agy -p \"/usage\" --output-format json；也支援 AGY_PATH 環境變數。", .english: "When blank, searches PATH and standard install locations to run agy -p \"/usage\" --output-format json. Also supports AGY_PATH.", .japanese: "空欄の場合は PATH や一般的なインストール先から agy を自動検出し、agy -p \"/usage\" --output-format json を実行します。AGY_PATH にも対応します。", .korean: "비워 두면 PATH 및 기본 설치 경로에서 agy를 자동으로 찾아 agy -p \"/usage\" --output-format json을 실행합니다. AGY_PATH 환경 변수도 지원합니다."],
         .yuhaiinURL: [.traditionalChinese: "Yuhaiin 位址", .english: "Yuhaiin URL", .japanese: "Yuhaiin URL", .korean: "Yuhaiin URL"],
         .yuhaiinToken: [.traditionalChinese: "Yuhaiin Token", .english: "Yuhaiin token", .japanese: "Yuhaiin トークン", .korean: "Yuhaiin 토큰"],
         .yuhaiinHint: [.traditionalChinese: "預設管理位址：http://127.0.0.1:50051。若啟用驗證，請填入僅授予 connections:read 權限的 API Token。", .english: "Default: http://127.0.0.1:50051. If authentication is enabled, use an API token scoped to connections:read.", .japanese: "既定の管理アドレス: http://127.0.0.1:50051。認証が有効な場合は、connections:read 権限だけを持つ API トークンを入力してください。", .korean: "기본 관리 주소: http://127.0.0.1:50051. 인증이 활성화된 경우 connections:read 권한만 부여된 API 토큰을 입력하세요."],
@@ -182,6 +197,9 @@ enum L10n {
         .specification: [.traditionalChinese: "規格", .english: "Specification", .japanese: "仕様", .korean: "사양"],
         .system: [.traditionalChinese: "系統映像", .english: "Blueprint", .japanese: "ブループリント", .korean: "블루프린트"],
         .endpoint: [.traditionalChinese: "管理 API", .english: "Management API", .japanese: "管理API", .korean: "관리 API"],
+        .cliPath: [.traditionalChinese: "CLI 路徑", .english: "CLI path", .japanese: "CLI パス", .korean: "CLI 경로"],
+        .fiveHourWindow: [.traditionalChinese: "5 小時額度", .english: "5-hour limit", .japanese: "5時間制限", .korean: "5시간 제한"],
+        .weeklyWindow: [.traditionalChinese: "每週額度", .english: "Weekly limit", .japanese: "週間制限", .korean: "주간 제한"],
         .state: [.traditionalChinese: "狀態", .english: "State", .japanese: "状態", .korean: "상태"],
         .period: [.traditionalChinese: "統計期間", .english: "Period", .japanese: "集計期間", .korean: "집계 기간"],
         .limited: [.traditionalChinese: "受限", .english: "Limited", .japanese: "制限中", .korean: "제한됨"],
@@ -196,6 +214,7 @@ enum L10n {
     static func providerName(_ id: String, _ language: AppLanguage) -> String {
         switch id {
         case StatusMetricID.codex.rawValue: return text(.codex, language)
+        case StatusMetricID.antigravity.rawValue: return text(.antigravity, language)
         case StatusMetricID.lightsail.rawValue: return text(.lightsail, language)
         case StatusMetricID.yuhaiin.rawValue: return text(.yuhaiin, language)
         case StatusMetricID.cycle.rawValue: return text(.cycle, language)
@@ -206,6 +225,7 @@ enum L10n {
     static func providerDescription(_ id: String, _ language: AppLanguage) -> String {
         switch id {
         case StatusMetricID.codex.rawValue: return text(.codexDescription, language)
+        case StatusMetricID.antigravity.rawValue: return text(.antigravityDescription, language)
         case StatusMetricID.lightsail.rawValue: return text(.lightsailDescription, language)
         case StatusMetricID.yuhaiin.rawValue: return text(.yuhaiinDescription, language)
         case StatusMetricID.cycle.rawValue: return text(.cycleDescription, language)
@@ -253,6 +273,28 @@ enum L10n {
         case .japanese: return seconds % 86_400 == 0 ? "\(seconds / 86_400)日" : (seconds % 3_600 == 0 ? "\(seconds / 3_600)時間" : "\(seconds)秒")
         case .korean: return seconds % 86_400 == 0 ? "\(seconds / 86_400)일" : (seconds % 3_600 == 0 ? "\(seconds / 3_600)시간" : "\(seconds)초")
         case .english: return seconds % 86_400 == 0 ? "\(seconds / 86_400) day" : (seconds % 3_600 == 0 ? "\(seconds / 3_600) hour" : "\(seconds) sec")
+        }
+    }
+
+    static func antigravityWindow(_ window: String, fallbackName: String, _ language: AppLanguage) -> String {
+        switch window.lowercased() {
+        case "5h", "5-hour", "5hour": return text(.fiveHourWindow, language)
+        case "weekly", "7d", "1w": return text(.weeklyWindow, language)
+        default: return fallbackName
+        }
+    }
+
+    static func antigravityShortWindow(_ window: String, fallbackName: String, _ language: AppLanguage) -> String {
+        switch window.lowercased() {
+        case "5h", "5-hour", "5hour": return "5h"
+        case "weekly", "7d", "1w":
+            switch language {
+            case .traditionalChinese: return "每週"
+            case .japanese: return "週間"
+            case .korean: return "주간"
+            case .english: return "Weekly"
+            }
+        default: return window.isEmpty ? fallbackName : window
         }
     }
 }

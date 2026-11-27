@@ -1,8 +1,9 @@
 # Status Bar
 
-Status Bar is a lightweight macOS menu bar monitor for three kinds of data:
+Status Bar is a lightweight macOS menu bar monitor for four kinds of data:
 
 - Codex quota and rate-limit windows
+- Antigravity model group 5-hour and weekly quota
 - AWS Lightsail transfer usage
 - Yuhaiin live upload/download traffic
 
@@ -19,8 +20,9 @@ all providers that currently have data.
 - macOS 13 Ventura or later
 - A Mac with the Swift compiler available (`swiftc`); Xcode Command Line Tools
   are sufficient for local builds
-- Optional: Codex CLI authentication, AWS credentials, and/or a running
-  Yuhaiin management API, depending on which cards you want to use
+- Optional: Codex CLI authentication, Antigravity CLI (`agy`), AWS credentials,
+  and/or a running Yuhaiin management API, depending on which cards you want to
+  use
 
 ## Install
 
@@ -77,6 +79,25 @@ The Codex card shows the primary and secondary rate-limit windows, remaining
 percentage, reset time, credits, and account information. The app reads the
 usage endpoint directly from `chatgpt.com`; it does not ask you to paste the
 token into Settings.
+
+### Antigravity
+
+Antigravity is ready automatically when the `agy` CLI is available on `PATH` or
+in standard macOS install locations (such as `/opt/homebrew/bin/agy`,
+`/usr/local/bin/agy`, `~/.local/bin/agy`, `~/.antigravity/antigravity/bin/agy`,
+or `/Applications/Antigravity.app/Contents/Resources/app/bin/agy`).
+
+If `agy` is installed elsewhere, set **Settings → Antigravity → agy CLI path**
+or pass an environment variable:
+
+```sh
+AGY_PATH="/path/to/agy" open build/StatusBar.app
+```
+
+The provider runs `agy -p "/usage" --output-format json`, displays the lowest
+remaining percentage across all model groups and windows in the menu bar
+(`AGY 39%`), and shows every group's 5-hour and weekly windows with reset times
+in the detail view.
 
 ### AWS Lightsail
 
@@ -136,6 +157,7 @@ Each provider has its own refresh interval. Defaults and accepted ranges are:
 | Provider | Default | Allowed range |
 | --- | ---: | ---: |
 | Codex | 300 seconds | 30 seconds–24 hours |
+| Antigravity | 300 seconds | 30 seconds–24 hours |
 | AWS Lightsail | 600 seconds | 60 seconds–24 hours |
 | Yuhaiin | 5 seconds | 1 second–1 hour |
 | Rotation | 8 seconds | 2–60 seconds |
@@ -175,15 +197,17 @@ Release. It can also be started manually from Actions with a tag such as
 ### A card says “Not configured”
 
 Open Settings and check the provider-specific values. For Codex, verify that
-`~/.codex/auth.json` exists and contains both required token fields. For AWS,
-verify the selected profile and its region. For Yuhaiin, verify that the
+`~/.codex/auth.json` exists and contains both required token fields. For
+Antigravity, verify that `agy` is installed or set its path in Settings. For
+AWS, verify the selected profile and its region. For Yuhaiin, verify that the
 management API is reachable at the configured URL.
 
 ### A card says “Read failed”
 
 Open the card for the detailed error, then use refresh again. Common causes are
-expired Codex authentication, missing AWS IAM permissions, an incorrect AWS
-region, or a stopped Yuhaiin service.
+expired Codex authentication, an unauthenticated or unreachable `agy` CLI,
+missing AWS IAM permissions, an incorrect AWS region, or a stopped Yuhaiin
+service.
 
 ### The app does not open after downloading
 
@@ -197,7 +221,9 @@ This is a dependency-free Swift app built directly with `swiftc`:
 
 - `AppDelegate.swift` — menu bar item, floating panel, and refresh lifecycle
 - `Views.swift` — dashboard, details, and Settings UI
-- `Providers.swift` — Codex and Yuhaiin providers
+- `Providers.swift` — Codex, Antigravity, and Yuhaiin providers
+- `CodexUsage.swift` — Codex quota response models
+- `AntigravityUsage.swift` — Antigravity CLI usage decoding and quota selection
 - `AWSClient.swift` — AWS credential resolution, SigV4 client, and Lightsail
 - `Configuration.swift` — preferences and Keychain storage
 - `Models.swift` — shared settings and metric models

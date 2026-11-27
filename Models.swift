@@ -28,6 +28,7 @@ enum AppLanguage: String, Codable, CaseIterable, Identifiable {
 
 enum StatusMetricID: String, CaseIterable, Identifiable {
     case codex
+    case antigravity
     case lightsail
     case yuhaiin
     case cycle
@@ -37,6 +38,7 @@ enum StatusMetricID: String, CaseIterable, Identifiable {
 
 enum MetricAccent {
     case indigo
+    case emerald
     case amber
     case cyan
     case neutral
@@ -65,6 +67,35 @@ struct MetricDetailSection: Identifiable {
 enum MetricDetailStyle: Equatable {
     case standard
     case codexQuota
+    case antigravityQuota
+}
+
+struct AntigravityBucketDetail: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let window: String
+    let remainingPercent: Int
+    let remainingProgress: Double
+    let resetAt: String
+    let resetIn: String
+}
+
+struct AntigravityGroupDetail: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let shortName: String
+    let modelsDescription: String?
+    let lowestPercent: Int
+    let buckets: [AntigravityBucketDetail]
+}
+
+struct AntigravityDetail: Equatable {
+    let lowestLabel: String
+    let lowestResetAt: String
+    let lowestResetIn: String
+    let summary: String?
+    let cliPath: String
+    let groups: [AntigravityGroupDetail]
 }
 
 struct LiveRate: Equatable {
@@ -86,6 +117,7 @@ struct MetricSnapshot: Identifiable {
     let updatedAt: Date?
     let errorMessage: String?
     var liveRate: LiveRate? = nil
+    var antigravityDetail: AntigravityDetail? = nil
 }
 
 protocol MetricProvider: AnyObject {
@@ -112,10 +144,12 @@ struct AppSettings: Codable, Equatable {
     var language: AppLanguage = .detected
     var statusMetricID: String = StatusMetricID.codex.rawValue
     var codexRefreshInterval: Double = 300
+    var antigravityRefreshInterval: Double = 300
     var lightsailRefreshInterval: Double = 600
     var yuhaiinRefreshInterval: Double = 5
     var cycleDisplayInterval: Double = 8
 
+    var antigravityCLIPath: String = ""
     var yuhaiinURL: String = "http://127.0.0.1:50051"
 
     var awsRegion: String = ""
@@ -133,9 +167,11 @@ struct AppSettings: Codable, Equatable {
         case language
         case statusMetricID
         case codexRefreshInterval
+        case antigravityRefreshInterval
         case lightsailRefreshInterval
         case yuhaiinRefreshInterval
         case cycleDisplayInterval
+        case antigravityCLIPath
         case yuhaiinURL
         case awsRegion
         case awsProfile
@@ -157,10 +193,12 @@ struct AppSettings: Codable, Equatable {
         let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
         let legacyInterval = try legacyContainer.decodeIfPresent(Double.self, forKey: .refreshInterval)
         codexRefreshInterval = try container.decodeIfPresent(Double.self, forKey: .codexRefreshInterval) ?? legacyInterval ?? 300
+        antigravityRefreshInterval = try container.decodeIfPresent(Double.self, forKey: .antigravityRefreshInterval) ?? legacyInterval ?? 300
         lightsailRefreshInterval = try container.decodeIfPresent(Double.self, forKey: .lightsailRefreshInterval) ?? legacyInterval ?? 600
         yuhaiinRefreshInterval = try container.decodeIfPresent(Double.self, forKey: .yuhaiinRefreshInterval) ?? legacyInterval ?? 5
         cycleDisplayInterval = try container.decodeIfPresent(Double.self, forKey: .cycleDisplayInterval) ?? 8
 
+        antigravityCLIPath = try container.decodeIfPresent(String.self, forKey: .antigravityCLIPath) ?? ""
         yuhaiinURL = try container.decodeIfPresent(String.self, forKey: .yuhaiinURL) ?? "http://127.0.0.1:50051"
         awsRegion = try container.decodeIfPresent(String.self, forKey: .awsRegion) ?? ""
         awsProfile = try container.decodeIfPresent(String.self, forKey: .awsProfile) ?? "default"

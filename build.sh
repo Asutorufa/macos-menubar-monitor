@@ -44,6 +44,7 @@ for arch in "${ARCHS_TO_BUILD[@]}"; do
     "$SCRIPT_DIR/Configuration.swift" \
     "$SCRIPT_DIR/Formatting.swift" \
     "$SCRIPT_DIR/CodexUsage.swift" \
+    "$SCRIPT_DIR/AntigravityUsage.swift" \
     "$SCRIPT_DIR/Providers.swift" \
     "$SCRIPT_DIR/AWSClient.swift" \
     "$SCRIPT_DIR/AppStore.swift" \

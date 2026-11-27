@@ -4,6 +4,7 @@ extension MetricAccent {
     var color: Color {
         switch self {
         case .indigo: return Color(red: 0.42, green: 0.39, blue: 1.0)
+        case .emerald: return Color(red: 0.20, green: 0.78, blue: 0.55)
         case .amber: return Color(red: 1.0, green: 0.62, blue: 0.20)
         case .cyan: return Color(red: 0.13, green: 0.78, blue: 0.86)
         case .neutral: return .secondary
@@ -322,12 +323,20 @@ struct SignalCard: View {
     private var icon: String {
         switch id {
         case StatusMetricID.codex.rawValue: return "sparkles"
+        case StatusMetricID.antigravity.rawValue: return "atom"
         case StatusMetricID.lightsail.rawValue: return "cloud.fill"
         default: return "arrow.up.arrow.down"
         }
     }
 
-    private var color: Color { snapshot?.accent.color ?? (id == StatusMetricID.codex.rawValue ? MetricAccent.indigo.color : .secondary) }
+    private var color: Color {
+        if let accentColor = snapshot?.accent.color { return accentColor }
+        switch id {
+        case StatusMetricID.codex.rawValue: return MetricAccent.indigo.color
+        case StatusMetricID.antigravity.rawValue: return MetricAccent.emerald.color
+        default: return .secondary
+        }
+    }
 }
 
 // MARK: - Indicators
@@ -643,9 +652,19 @@ struct DetailView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 12) {
                     if let snapshot {
-                        if snapshot.detailStyle == .codexQuota {
+                        switch snapshot.detailStyle {
+                        case .codexQuota:
                             codexDetail(snapshot)
-                        } else {
+                        case .antigravityQuota:
+                            if let detail = snapshot.antigravityDetail {
+                                antigravityDetail(snapshot, detail: detail)
+                            } else {
+                                detailHero(snapshot)
+                                ForEach(snapshot.detailSections) { section in
+                                    detailSection(section, color: snapshot.accent.color)
+                                }
+                            }
+                        case .standard:
                             detailHero(snapshot)
                             ForEach(snapshot.detailSections) { section in
                                 detailSection(section, color: snapshot.accent.color)
@@ -847,6 +866,117 @@ struct DetailView: View {
         .overlay(shape.stroke(Color.primary.opacity(0.06), lineWidth: 1))
     }
 
+    @ViewBuilder
+    private func antigravityDetail(_ snapshot: MetricSnapshot, detail: AntigravityDetail) -> some View {
+        let color = snapshot.accent.color
+        antigravitySummaryCard(snapshot, detail: detail, color: color)
+        ForEach(detail.groups) { group in
+            antigravityGroupCard(group, color: color)
+        }
+        if let source = snapshot.detailSections.first(where: { $0.id == "source" }) {
+            detailSection(source, color: color)
+        }
+    }
+
+    private func antigravitySummaryCard(_ snapshot: MetricSnapshot, detail: AntigravityDetail, color: Color) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Radius.hero, style: .continuous)
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L10n.text(.remaining, language)).font(.caption).foregroundStyle(.secondary)
+                    Text(snapshot.value)
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .contentTransition(.numericText())
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 4) {
+                    Label(detail.lowestLabel, systemImage: "atom").font(.caption.weight(.medium))
+                    if detail.lowestResetIn != "—" {
+                        Text("\(L10n.text(.resetIn, language)) \(detail.lowestResetIn)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            ProgressBar(value: snapshot.progress, color: color)
+            if detail.lowestResetAt != "—" || detail.lowestResetIn != "—" {
+                Divider().opacity(0.5)
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(L10n.text(.reset, language)).font(.caption2).foregroundStyle(.secondary)
+                        Text(detail.lowestResetAt).font(.caption.weight(.medium))
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(L10n.text(.resetIn, language)).font(.caption2).foregroundStyle(.secondary)
+                        Text(detail.lowestResetIn).font(.caption.weight(.medium))
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(shape.fill(LinearGradient(colors: [color.opacity(0.12), Color.primary.opacity(0.045)], startPoint: .topLeading, endPoint: .bottomTrailing)))
+        .overlay(shape.stroke(color.opacity(0.18), lineWidth: 1))
+    }
+
+    private func antigravityGroupCard(_ group: AntigravityGroupDetail, color: Color) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(group.name)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                Spacer()
+                Text("\(group.lowestPercent)%")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(color)
+                    .contentTransition(.numericText())
+            }
+            if let description = group.modelsDescription, !description.isEmpty {
+                Text(description)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(Array(group.buckets.enumerated()), id: \.element.id) { index, bucket in
+                if index > 0 {
+                    Divider().opacity(0.4)
+                }
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Label(bucket.title, systemImage: antigravityWindowIcon(bucket.window))
+                            .font(.caption.weight(.medium))
+                        Spacer()
+                        Text("\(bucket.remainingPercent)%")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .contentTransition(.numericText())
+                    }
+                    ProgressBar(value: bucket.remainingProgress, color: color, height: 6)
+                    if bucket.resetAt != "—" || bucket.resetIn != "—" {
+                        HStack {
+                            Text("\(L10n.text(.reset, language)) \(bucket.resetAt)")
+                            Spacer()
+                            Text("\(L10n.text(.resetIn, language)) \(bucket.resetIn)")
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(shape.fill(Color.primary.opacity(0.045)))
+        .overlay(shape.stroke(Color.primary.opacity(0.06), lineWidth: 1))
+    }
+
+    private func antigravityWindowIcon(_ window: String) -> String {
+        switch window.lowercased() {
+        case "5h", "5-hour", "5hour": return "clock"
+        case "weekly", "7d", "1w": return "calendar"
+        default: return "gauge"
+        }
+    }
+
     private func detailValue(_ section: MetricDetailSection, _ key: CopyKey) -> String {
         section.rows.first(where: { $0.label == L10n.text(key, language) })?.value ?? "—"
     }
@@ -914,6 +1044,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     generalSection
                     refreshRatesSection
+                    antigravitySection
                     yuhaiinSection
                     awsSection
                 }
@@ -949,6 +1080,7 @@ struct SettingsView: View {
     private var refreshRatesSection: some View {
         SettingsSection(title: L10n.text(.refreshRates, language), icon: "timer") {
             intervalRow(L10n.text(.codexRefreshRate, language), value: $draft.codexRefreshInterval, placeholder: "300")
+            intervalRow(L10n.text(.antigravityRefreshRate, language), value: $draft.antigravityRefreshInterval, placeholder: "300")
             intervalRow(L10n.text(.lightsailRefreshRate, language), value: $draft.lightsailRefreshInterval, placeholder: "600")
             intervalRow(L10n.text(.yuhaiinRefreshRate, language), value: $draft.yuhaiinRefreshInterval, placeholder: "5")
             intervalRow(L10n.text(.cycleDisplayRate, language), value: $draft.cycleDisplayInterval, placeholder: "8")
@@ -964,6 +1096,14 @@ struct SettingsView: View {
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 70)
             Text(L10n.text(.seconds, language)).foregroundStyle(.secondary)
+        }
+    }
+
+    private var antigravitySection: some View {
+        SettingsSection(title: L10n.text(.antigravitySettings, language), icon: "atom") {
+            TextField(L10n.text(.antigravityCLIPath, language), text: $draft.antigravityCLIPath)
+                .textFieldStyle(.roundedBorder)
+            Text(L10n.text(.antigravityHint, language)).font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 
