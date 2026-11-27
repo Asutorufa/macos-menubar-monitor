@@ -126,6 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let prefix: String = {
             switch id {
             case StatusMetricID.codex.rawValue: return "CDX"
+            case StatusMetricID.antigravity.rawValue: return "AGY"
             case StatusMetricID.lightsail.rawValue: return "LS"
             default: return ""
             }
@@ -137,6 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else if let value = snapshot?.value {
             switch id {
             case StatusMetricID.codex.rawValue: button.title = "CDX \(value)"
+            case StatusMetricID.antigravity.rawValue: button.title = "AGY \(value)"
             case StatusMetricID.lightsail.rawValue: button.title = "LS \(Fmt.percent(snapshot?.progress))"
             default: button.title = value.replacingOccurrences(of: " ", with: "")
             }
